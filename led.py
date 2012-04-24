@@ -1,3 +1,7 @@
+import sys
+import time
+import parport
+import PIL
 
 class szene:
 	def __init__(self, x, y):
@@ -5,14 +9,62 @@ class szene:
 		self.y = y
 		self.frames = []
 
-	def testRed(self):
+	def testColors(self, r=1, g=1, b=1):
 		tmp = frame(self.x, self.y)
-		map(lambda l: l.setColor(255,1,0), tmp.getAllPixel())
+		output = parport()
+		map(lambda l: l.setColor(r,g,b), tmp.getAllPixel())
 		#self.frames.append( tmp )
-		return tmp
+		output.write(tmp)
+
+	def flushAll(self):
+		tmp = frame(self.x, self.y)
+                output = parport()
+                map(lambda l: l.setColor(0,0,0), tmp.getAllPixel())
+                #self.frames.append( tmp )
+                output.write(tmp)
 
 
+class output:
+	def __init__(self):
+		#self.port = parport.Parport()
+		parport.open();
+		self.enable = 0
+		self.latch = 0
 
+	def write(self, frame):
+		self.enable=0
+		self.latch=0
+		out = frame.toSerialOneLine()
+		preparedData = 0
+		preparedData=preparedData|(self.enable<<5)
+                preparedData=preparedData|(self.latch<<4)
+		#now = time.time()
+		for element in out:
+			for i in xrange(31,-1,-1):
+				data=preparedData
+				data=data|(((element>>i)&1)<<6)
+				parport.writeWithClock(data)
+				#time.sleep(0.000000000000005)
+				#data=data|(1<<3)
+				#parport.write(data)
+				#time.sleep(0.0000000005)
+		#print time.time()-now
+		self.latch=1
+		self.enable=0
+		data=0
+		data=data|(self.enable<<5)
+                data=data|(self.latch<<4)
+                parport.write(data)
+		#time.sleep(0.000000015)
+		self.enable=1
+		self.latch=0
+		data=0
+                data=data|(self.enable<<5)
+                data=data|(self.latch<<4)
+                parport.write(data)
+		#time.sleep(0.0000000015)
+	
+	
 class frame:
 	def __init__(self, x, y):
 		self.x = x
@@ -21,9 +73,11 @@ class frame:
 	def toSerial(self):
 		out = map(lambda r: r.toSerial(), self.rows)
 		return out
+
 	def toSerialOneLine(self):
-		out = map(lambda r, pos: r.toSerial( pos%2 ), self.rows, range(len(self.rows)))
+		out = map(lambda r, pos: r.toSerial( (pos+1)%2 ), self.rows, range(len(self.rows)))
 		out = reduce(lambda first,second: first+second, out)
+		out.reverse()
 		return out
 
 	def getPixel(self, x, y):
@@ -31,8 +85,7 @@ class frame:
 		
 	def getAllPixel(self):
 		return reduce(lambda first,second: first+second, map(lambda row: row.getAllPixel(), self.rows))
-		
-
+		 
 class row:
 	def __init__(self, rownumber, size):
 		self.rownumber = rownumber
@@ -61,7 +114,7 @@ class led:
 		self.setColor(red, green, blue)
 
 	def _setRed(self, r):
-		print r
+		#print r
 		if r < 0 or r > 0b1111111111:
 			raise Exception("Out of color range")
 		self._red = r
@@ -91,10 +144,7 @@ class led:
 		self._setBlue(b)
 
 	def toSerial(self):
-		print self._red
+		#print self._red
 		out = 0
-		out = (out <<  2) |(self._red&1023) 
-		out = (out << 10) | (self._green&1024)
-		out = (out << 10) | (self._blue&1024)
-		
+		out=(self._green<<0)|(self._red<<10)|(self._blue<<20)	
 		return out
