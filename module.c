@@ -40,6 +40,15 @@ parport_write(PyObject *self, PyObject *args) {
 	Py_RETURN_NONE;
 }
 
+
+
+static PyObject *
+parport_write_frame(PyObject *self, PyObject *args) {
+	PyObject *list;
+	if (!PyArg_ParseTuple(args, "O", &list))
+		return NULL;
+}
+
 static PyObject *
 parport_write_with_clock(PyObject *self, PyObject *args) {
         int data;
