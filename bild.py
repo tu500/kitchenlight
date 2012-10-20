@@ -20,7 +20,7 @@ x=-1
 y=-1
 
 output=led.output()
-image=Image.open('bild.gif')
+image=Image.open('adcloud.png')
 
 offset = 0
 while True:
@@ -33,8 +33,10 @@ while True:
 			pt.setColor(color[0]<<2,color[1]<<2,color[2]<<2)
 			
 	#output.write(leer)
-	#time.sleep(1)
+	#time.sleep(0.2)
 	output.write(tmp)
 	time.sleep(0.05)
-	offset += 1
+	offset -= 1
+	if offset % 30 == 0:
+		time.sleep(60)
 #map(lambda l: l.setColor(5,0,0), tmp.getAllPixel())

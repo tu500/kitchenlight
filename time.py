@@ -1,7 +1,9 @@
 import led
 import time
 import math
-import Image,ImageSequence,ImageFont,ImageDraw
+import Image
+import ImageSequence,ImageFont,ImageDraw
+from time import gmtime, strftime, localtime
 
 try:
         import psyco
@@ -14,13 +16,14 @@ except ImportError:
 w=30
 h=6
 
-tmp=led.frame(w,h)
+tmp = led.frame(w,h)
 leer=led.frame(w,h)
 x=-1
 y=-1
 
 font = ImageFont.truetype("pixelmix.ttf", 6)
-text = "CCC"
+text = "Time:"
+print strftime("%H%M%S", localtime())
 size = font.getsize(text)
 
 if size[0] > w:
@@ -29,16 +32,18 @@ if size[0] > w:
 else:
 	text_width = w
 
-image = Image.new("RGB",(text_width,h),(0,0,0))
-draw = ImageDraw.Draw(image)
-draw.text((0,0), text, fill=(0,255,0), font=font)
-#image.save("test.png")
-data = image.load()
-
 output=led.output()
 
 offset = 0
 while True:
+	text = strftime("%H%M%S", localtime())
+	image = Image.new("RGB",(text_width,h),(0,0,0))
+	draw = ImageDraw.Draw(image)
+	draw.fontmode = "1"
+	draw.text((0,0), text, fill=(1,1,10), font=font)
+	data = image.load()
+
+
 	offset = offset % 30
 	for (x,y) in reduce(lambda x,z: x+z, map(lambda y: map(lambda x: (x,y), range(30)), range(6))):
 		pt = tmp.getPixel(((x+offset)%30),y)
@@ -49,6 +54,5 @@ while True:
 	#time.sleep(1)
 	output.write(tmp)
 	time.sleep(0.05)
-	offset -= 1
-#map(lambda l: l.setColor(5,0,0), tmp.getAllPixel())
+	#offset -= 1
 
