@@ -14,11 +14,11 @@ except:
 
 APP_URL = '/app'
 
-def renderForm(buttonText='Ok', parameters=None, text='', description='', url=None):
-    if not parameters:
-        pars = {}
-    else:
-        pars = parameters
+def renderForm(buttonText='Ok', parameters=None, inputs=None, text='', description='', url=None):
+    if not parameters:  pars = {}
+    else:               pars = parameters
+    if not inputs:      ins = {}
+    else:               ins = inputs
 
     urlstring = ''
     if url:
@@ -33,10 +33,18 @@ def renderForm(buttonText='Ok', parameters=None, text='', description='', url=No
 
     for k, v in pars.iteritems():
         s += '<input type="hidden" name="%s" value="%s">' % (str(k), str(v))
+    for k, l in ins.iteritems():
+        s += '<input type="text" name="%s" maxlength="%s">' % (str(k), str(l))
     s += '<input type="submit" name="submit" value="%s">' % (buttonText,)
     s += '</form>'
 
     return s
+
+def cleanupRequestArgs(d):
+    t = {}
+    for k, v in d.iteritems():
+        t[k] = v[0]
+    return t
 
 
 
@@ -108,9 +116,11 @@ class App():
     def webEvent(self, request):
         try:
             self.event(request.args['action'][0])
-            return self.getPage(request)
+            self.event(cleanupRequestArgs(request.args))
         except KeyError:
-            return self.getPage(request)
+            pass
+        request.redirect(request.path)
+        return ""
 
 
     def onStart(self):
@@ -144,13 +154,15 @@ class WebInterface(Resource):
 
 class Manager():
     nextApp = None
+    currentApp = None
 
     def __init__(self, scr, defaultApp, apps):
         self.apps = apps
         self.scr = scr
         self.scr.keypad(1)
         self.scr.nodelay(1)
-        self.currentApp = defaultApp()
+        self.nextApp = defaultApp
+        self.setApp()
 
     def run(self):
         lc = LoopingCall(self.loop)
@@ -158,7 +170,7 @@ class Manager():
 
         resource = WebInterface(self)
         factory = Site(resource)
-        reactor.listenTCP(8880, factory)
+        reactor.listenTCP(80, factory)
         reactor.run()
 
     def loop(self):
@@ -188,28 +200,44 @@ class Manager():
         return self.currentApp.webEvent(request)
 
     def getMainPage(self, request):
-        s = '<html><body> <h1><a href="%s">Aktuelle App</a></h1> <h1>Andere App starten</h1>' % (APP_URL,);
+        s = '<html><body>'
+        s += '<h1>Aktuelle App</h1>'
+        s += '<table><tr>%s</tr></table>' % "".join([
+                 '<td>%s</td>' % (renderForm('Befehle', url=APP_URL),),
+                 '<td>%s</td>' % (renderForm('Pause', parameters={ 'action': 'pauseapp' }),),
+                 '<td>%s</td>' % (renderForm('Unpause', parameters={ 'action': 'unpauseapp' }),)
+             ])
+        s += '<h1>Andere App starten</h1> <table>'
         for index, app in enumerate(self.apps):
-            s += renderForm('Ausfuehren',
+            s += '<tr><td><h3>%s</h3></td> <td><p>%s</p></td> <td>' % (app.name, app.description)
+            s += renderForm('Ausf&uuml;hren',
                     parameters={ 'index': index, 'action': 'startapp' },
                     text=app.name,
                     description=app.description)
-        s += '</html></body>';
+            s += '</td>'
+        s += '</table></html></body>';
         return s
 
     def mainWebEvent(self, request):
         try:
-            if request.args['action'][0] == 'startapp':
+            action = request.args['action'][0]
+            if action == 'startapp':
                 self.changeApp(self.apps[int(request.args['index'][0])])
-                return "Successful"
-            return self.getMainPage(request)
+            elif action == 'pauseapp':
+                self.currentApp.pause()
+            elif action == 'unpauseapp':
+                self.currentApp.unPause()
         except KeyError:
-            return self.getMainPage(request)
+            pass
+        request.redirect(request.path)
+        return ""
 
 
     def setApp(self):
-        self.currentApp.stop()
+        if self.currentApp:
+            self.currentApp.stop()
         self.currentApp = self.nextApp()
+        self.currentApp.scr = self.scr
         self.nextApp = None
 
     def changeApp(self, nextApp):

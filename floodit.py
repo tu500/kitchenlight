@@ -1,11 +1,8 @@
 import led
 import time
-import math
-#from random import random
 import random
 from array import *
-import multiprocessing
-import curses
+import kitchen
 
 try:
     import psyco
@@ -13,56 +10,37 @@ try:
 except ImportError:
     print "psyco not avaible"
 
-
-a = 200
-colors = [ (a/2, 0, 0),
-        (0, a/2, 0),
-        (0, 0, a/2),
-        (a, a, 0),
-        (a, 0, a),
-        (a/2, a/2, a/2)]
-
 w=30
 h=6
 
-colorFrame=led.frame(w,h)
-leer=led.frame(w,h)
+class Floodit(kitchen.App):
+    name = "Floodit"
+    description = "The floodit game"
 
-output=led.output()
+    colors = {
+            'red':    ('r', (100, 0, 0)),
+            'green':  ('g', (0, 100, 0)),
+            'blue':   ('b', (0, 0, 100)),
+            'yellow': ('y', (200, 200, 0)),
+            'purple': ('p', (200, 0, 200)),
+            'white':  ('w', (100, 100, 100)),
+        }
 
+    def onStart(self):
+        self.setActionsAndKeymap()
+        self.output = led.output()
+        self.colorFrame = led.frame(w,h)
+        self.colorFrame.fillRandom(map(lambda x: x[1], self.colors.itervalues()))
+        self.output.write(self.colorFrame)
 
-#while True:
-#   controller.loop()
-#   output.write(tmp)
-#   #time.sleep(0.005)
+    def setActionsAndKeymap(self):
+        for name, (key, rgb) in self.colors.iteritems():
+            self.keyToEvent[ord(key)] = name
+            self.actions.append((name, { 'action': name }))
 
-
-def main(scr):
-    #scr.nodelay(1)
-    scr.keypad(1)
-
-    starttime = time.time()
-    currentPos = (0,0)
-    currentColor = colors[0]
-    cursorColor = (1000,1000,1000)
-    colorFrame.fillRandom(colors)
-
-    output.write(tmp)
-    while True:
-        c = scr.getch()
-        if c == ord('q'): exit()
-        elif c == ord('w'): currentPos = (currentPos[0], currentPos[1] - 1)
-        elif c == ord('s'): currentPos = (currentPos[0], currentPos[1] + 1)
-        elif c == ord('d'): currentPos = (currentPos[0] + 1, currentPos[1])
-        elif c == ord('a'): currentPos = (currentPos[0] - 1, currentPos[1])
-        elif c in range(ord('0'), ord('9')):
-            colorFrame.flood(colors[c - ord('0')])
-        #else: colorFrame.flood(colors[random.randint(0,len(colors)-1)])
-
-        tmp = colorFrame.copy()
-        timepassed = int(time.time() - starttime)
-        if timepassed % 2 and False:
-            tmp.getPixel(*currentPos).setColor(*cursorColor)
-        output.write(tmp)
-    
-curses.wrapper(main)
+    def event(self, e):
+        try:
+            self.colorFrame.flood(self.colors[e][1])
+            self.output.write(self.colorFrame)
+        except KeyError:
+            return
