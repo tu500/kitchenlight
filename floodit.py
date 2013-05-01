@@ -34,11 +34,12 @@ class Floodit(kitchen.App):
         self.output.write(self.colorFrame)
 
     def setActionsAndKeymap(self):
+        self.actions = []
         for name, (key, rgb) in self.colors.iteritems():
             self.keyToEvent[ord(key)] = name
-            self.actions.append((name, { 'action': name }))
+            self.actions.append((name, { 'action': name }, {}, rgb))
 
-    def event(self, e):
+    def event(self, e, args={}):
         try:
             self.colorFrame.flood(self.colors[e][1])
             self.output.write(self.colorFrame)

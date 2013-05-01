@@ -14,11 +14,19 @@ except:
 
 APP_URL = '/app'
 
-def renderForm(buttonText='Ok', parameters=None, inputs=None, text='', description='', url=None):
+def clamp(i, a, b):
+    if i < a: return a
+    if i > b: return b
+    return i
+
+def renderForm(buttonText='Ok', parameters=None, inputs=None, buttonColor=None, text='', description='', url=None):
     if not parameters:  pars = {}
     else:               pars = parameters
     if not inputs:      ins = {}
     else:               ins = inputs
+    buttonStyle = ''
+    if buttonColor:
+        buttonStyle = ' style="background-color:#%.2x%.2x%.2x"' % tuple([clamp(i,0,255) for i in buttonColor])
 
     urlstring = ''
     if url:
@@ -33,9 +41,9 @@ def renderForm(buttonText='Ok', parameters=None, inputs=None, text='', descripti
 
     for k, v in pars.iteritems():
         s += '<input type="hidden" name="%s" value="%s">' % (str(k), str(v))
-    for k, l in ins.iteritems():
-        s += '<input type="text" name="%s" maxlength="%s">' % (str(k), str(l))
-    s += '<input type="submit" name="submit" value="%s">' % (buttonText,)
+    for k, ml, fl in ins:
+        s += '<input type="text" name="%s" maxlength="%s" style="width:%sem">' % (str(k), str(ml), str(fl))
+    s += '<input type="submit" name="submit" value="%s"%s>' % (buttonText, buttonStyle)
     s += '</form>'
 
     return s
@@ -107,16 +115,18 @@ class App():
 
 
     def getPage(self, request):
-        s = '<html><body> <h1><a href="/">Hauptseite</a></h1> <h1>%s</h1>' % (self.name,);
+        s = '<html><body> <h1><a href="/">Hauptseite</a></h1> <h1>%s</h1> <p>%s</p>' % (self.name, self.getInfo(request));
         for action in self.actions:
-            s += renderForm(action[0], action[1])
+            s += renderForm(*action)
         s += '</html></body>';
         return s
 
+    def getInfo(self, request):
+        return ""
+
     def webEvent(self, request):
         try:
-            self.event(request.args['action'][0])
-            self.event(cleanupRequestArgs(request.args))
+            self.event(request.args['action'][0], cleanupRequestArgs(request.args))
         except KeyError:
             pass
         request.redirect(request.path)
@@ -127,7 +137,7 @@ class App():
         pass
     def update(self, frametime):
         pass
-    def event(self, e):
+    def event(self, e, args={}):
         pass
     def cleanup(self):
         pass
@@ -259,7 +269,7 @@ class a(App):
     def update(self, frametime):
         f.write("\nupdate" + str(self.runtime) + str(frametime))
         f.flush()
-    def event(self, e):
+    def event(self, e, args={}):
         f.write("\nevent" + e)
         f.flush()
     def cleanup(self):

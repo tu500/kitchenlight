@@ -20,7 +20,11 @@ class Text(kitchen.App):
     description = "Prints arbitrary text"
     interval = 0.02
 
-    def __init__(self, text="1234567890 The Quick brown Fox jumps over the lazy dog. -!\$%&/()=?"):
+    actions = [
+            ('set text',   { 'action': 'settext' }, [ ('text', 200, 20)])
+        ]
+
+    def __init__(self, text="arbitrary text"):
         kitchen.App.__init__(self)
         self.font = ImageFont.truetype("pixelmix.ttf", 6)
         self.setText(text)
@@ -37,6 +41,7 @@ class Text(kitchen.App):
             self.scrolling = True
             self.text_width = size[0]
         else:
+            self.scrolling = False
             self.text_width = w
 
         image = Image.new("RGB",(self.text_width,h),(0,0,0))
@@ -48,10 +53,19 @@ class Text(kitchen.App):
         self.runtime = 0.0
 
     def update(self, passedtime):
-        offset = int((self.runtime * 10) % self.text_width)
+        if self.scrolling:
+            offset = int((self.runtime * 10) % self.text_width)
+        else:
+            offset = 0
+
         for (x,y) in reduce(lambda x,z: x+z, map(lambda y: map(lambda x: (x,y), range(30)), range(6))):
             pt = self.frame.getPixel(x,y)
             color=self.data[(x+offset)%self.text_width,y]
             pt.setColor(color[0]<<2,color[1]<<2,color[2]<<2)
 
         self.output.write(self.frame)
+
+    def event(self, e, args={}):
+        if e == "settext":
+            try: self.setText(args['text'])
+            except ValueError: pass
